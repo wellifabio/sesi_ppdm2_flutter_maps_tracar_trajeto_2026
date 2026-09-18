@@ -5,7 +5,9 @@ import 'package:geolocator/geolocator.dart';
 import 'splash.dart';
 
 class Home extends StatefulWidget {
-  const new({super.key});
+  final Future<Position?> Function()? locationProvider;
+
+  const Home({super.key, this.locationProvider});
 
   @override
   State<Home> createState() => _HomeState();
@@ -13,11 +15,29 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   Position? p;
+  bool isLoading = true;
 
   @override
-  initState() async {
-    p = await obterCoordenadasGPS();
+  void initState() {
     super.initState();
+    obterP();
+  }
+
+  Future<void> obterP() async {
+    try {
+      final provider = widget.locationProvider ?? obterCoordenadasGPS;
+      p = await provider();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -54,17 +74,11 @@ class _HomeState extends State<Home> {
         ),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (p != null)
-              CircularProgressIndicator()
-            else
-              Text(
-                'Você está em \nlatitude: $p.latitude \nlongitude: $p.longitude',
+        child: isLoading
+            ? CircularProgressIndicator()
+            : Text(
+                'Você está em \nlatitude: ${p?.latitude ?? 'N/A'} \nlongitude: ${p?.longitude ?? 'N/A'}',
               ),
-          ],
-        ),
       ),
     );
   }
