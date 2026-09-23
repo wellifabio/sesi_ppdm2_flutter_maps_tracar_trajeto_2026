@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import 'splash.dart';
-import 'rota.dart';
+import 'widgets/menu.dart';
 
 class Linha extends StatefulWidget {
   const Linha({super.key});
@@ -29,43 +27,7 @@ class _LinhaState extends State<Linha> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Map traçar linha")),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            ListTile(
-              trailing: Icon(Icons.chevron_left, size: 50),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: Icon(Icons.splitscreen),
-              title: Text('Splash'),
-              onTap: () => Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => Splash()),
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.home),
-              title: Text('Traçar Linhas'),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: Icon(Icons.home),
-              title: Text('Traçar Rotas'),
-              onTap: () => Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => Rota()),
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.exit_to_app),
-              title: Text('Sair'),
-              onTap: () => SystemNavigator.pop(),
-            ),
-          ],
-        ),
-      ),
+      drawer: Menu.ops(context),
       body: Center(
         child: Column(
           children: [

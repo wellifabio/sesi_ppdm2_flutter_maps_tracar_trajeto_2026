@@ -26,7 +26,7 @@ class _RotaState extends State<Rota> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Map traçar Rota")),
-      drawer: Menu.ops,
+      drawer: Menu.ops(context),
       body: Center(
         child: Column(
           children: [
@@ -102,22 +102,22 @@ class _RotaState extends State<Rota> {
   }
 
   Future<void> _obterRota() async {
-    final pontos = PolylinePoints(apiKey: '');
+    final pontos = PolylinePoints.legacy('API_KEYd');
 
-    final result = await pontos.getRouteBetweenCoordinatesV2(
-      request: RoutesApiRequest(
+    // ignore: deprecated_member_use
+    final result = await pontos.getRouteBetweenCoordinates(
+      request: PolylineRequest(
         origin: PointLatLng(_pontoInicial.latitude, _pontoInicial.longitude),
         destination: PointLatLng(
           _pontoClicado!.latitude,
           _pontoClicado!.longitude,
         ),
-        travelMode: TravelMode.driving,
+        mode: TravelMode.driving,
       ),
     );
 
-    if (result.routes.isNotEmpty &&
-        result.routes.first.polylinePoints != null) {
-      final coordenadas = result.routes.first.polylinePoints!
+    if (result.points.isNotEmpty) {
+      final coordenadas = result.points
           .map((p) => LatLng(p.latitude, p.longitude))
           .toList();
 
@@ -128,6 +128,7 @@ class _RotaState extends State<Rota> {
       }
     } else {
       if (mounted) {
+        debugPrint(result.errorMessage);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
