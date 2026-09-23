@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import 'splash.dart';
-import 'linha.dart';
+import 'widgets/menu.dart';
 
 class Rota extends StatefulWidget {
   const Rota({super.key});
@@ -22,50 +20,13 @@ class _RotaState extends State<Rota> {
   @override
   void initState() {
     super.initState();
-    // _obterCoordenadasGPS();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Map traçar Rota")),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            ListTile(
-              trailing: Icon(Icons.chevron_left, size: 50),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: Icon(Icons.splitscreen),
-              title: Text('Splash'),
-              onTap: () => Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => Splash()),
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.home),
-              title: Text('Traçar Linhas'),
-              onTap: () => Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => Linha()),
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.home),
-              title: Text('Traçar Rotas'),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: Icon(Icons.exit_to_app),
-              title: Text('Sair'),
-              onTap: () => SystemNavigator.pop(),
-            ),
-          ],
-        ),
-      ),
+      drawer: Menu.ops,
       body: Center(
         child: Column(
           children: [
@@ -129,7 +90,6 @@ class _RotaState extends State<Rota> {
       _linhas = {};
       return;
     }
-
     _linhas = {
       Polyline(
         polylineId: PolylineId('rota_destino'),
