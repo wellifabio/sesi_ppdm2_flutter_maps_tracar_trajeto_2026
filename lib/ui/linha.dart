@@ -4,79 +4,31 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import 'splash.dart';
+import 'rota.dart';
 
-class Home extends StatefulWidget {
-  final Future<Position?> Function()? locationProvider;
-
-  const Home({super.key, this.locationProvider});
-
-  static List<LatLng> calcularRota(LatLng origem, LatLng destino) {
-    return [origem, destino];
-  }
+class Linha extends StatefulWidget {
+  const Linha({super.key});
 
   @override
-  State<Home> createState() => _HomeState();
+  State<Linha> createState() => _LinhaState();
 }
 
-class _HomeState extends State<Home> {
-  Position? p;
-  LatLng inicio = LatLng(-22.7130000, -46.8180000); //SESI Amparo
+class _LinhaState extends State<Linha> {
+  LatLng _pontoInicial = LatLng(-22.7130000, -46.8180000); //SESI Amparo
   LatLng? _pontoClicado;
-  Set<Polyline> _rotas = {};
-  bool isLoading = false;
-  String mensagem = 'Destino: ';
-
-  void atualizarRota() {
-    if (_pontoClicado == null) {
-      _rotas = {};
-      return;
-    }
-
-    final pontos = Home.calcularRota(inicio, _pontoClicado!);
-    _rotas = {
-      Polyline(
-        polylineId: const PolylineId('rota_destino'),
-        points: pontos,
-        color: Colors.blue,
-        width: 5,
-        jointType: JointType.round,
-      ),
-    };
-  }
+  Set<Polyline> _linhas = {};
+  String mensagem = 'Destino: Clique em um ponto no mapa';
 
   @override
   void initState() {
     super.initState();
-    // obterP();
-  }
-
-  Future<void> obterP() async {
-    try {
-      final provider = widget.locationProvider ?? obterCoordenadasGPS;
-      p = await provider();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-          if (p != null) {
-            inicio = LatLng(p!.latitude, p!.longitude);
-          }
-          if (_pontoClicado != null) {
-            atualizarRota();
-          }
-        });
-      }
-    }
+    obterCoordenadasGPS();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Home")),
+      appBar: AppBar(title: Text("Map traçar linha")),
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
@@ -95,8 +47,16 @@ class _HomeState extends State<Home> {
             ),
             ListTile(
               leading: Icon(Icons.home),
-              title: Text('Home'),
+              title: Text('Traçar Linhas'),
               onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: Icon(Icons.home),
+              title: Text('Traçar Rotas'),
+              onTap: () => Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => Rota()),
+              ),
             ),
             ListTile(
               leading: Icon(Icons.exit_to_app),
@@ -109,22 +69,20 @@ class _HomeState extends State<Home> {
       body: Center(
         child: Column(
           children: [
-            isLoading
-                ? CircularProgressIndicator()
-                : Text(
-                    'Origem: @${p?.latitude ?? 'N/A'}, ${p?.longitude ?? 'N/A'}',
-                  ),
+            Text(
+              'Origem: @${_pontoInicial.latitude}, ${_pontoInicial.longitude}',
+            ),
             Text(mensagem),
             Expanded(
               child: GoogleMap(
                 initialCameraPosition: CameraPosition(
-                  target: inicio,
+                  target: _pontoInicial,
                   zoom: 15.0,
                 ),
                 onTap: (LatLng latLng) {
                   setState(() {
                     _pontoClicado = latLng;
-                    atualizarRota();
+                    atualizarLinha();
                     mensagem =
                         'Destino: @${latLng.latitude.toStringAsFixed(7)}, ${latLng.longitude.toStringAsFixed(7)}';
                   });
@@ -138,15 +96,23 @@ class _HomeState extends State<Home> {
                   );
                 },
                 markers: _pontoClicado == null
-                    ? {Marker(markerId: MarkerId('inicio'), position: inicio)}
+                    ? {
+                        Marker(
+                          markerId: MarkerId('_pontoInicial'),
+                          position: _pontoInicial,
+                        ),
+                      }
                     : {
-                        Marker(markerId: MarkerId('inicio'), position: inicio),
+                        Marker(
+                          markerId: MarkerId('_pontoInicial'),
+                          position: _pontoInicial,
+                        ),
                         Marker(
                           markerId: MarkerId('clicado'),
                           position: _pontoClicado!,
                         ),
                       },
-                polylines: _rotas,
+                polylines: _linhas,
               ),
             ),
           ],
@@ -155,7 +121,7 @@ class _HomeState extends State<Home> {
     );
   }
 
-  Future<Position?> obterCoordenadasGPS() async {
+  Future<void> obterCoordenadasGPS() async {
     bool servicoAtivo;
     LocationPermission permissao;
     servicoAtivo = await Geolocator.isLocationServiceEnabled();
@@ -166,27 +132,48 @@ class _HomeState extends State<Home> {
     if (permissao == LocationPermission.denied) {
       permissao = await Geolocator.requestPermission();
       if (permissao == LocationPermission.denied) {
-        if (!mounted) return null;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Permissão de localização negada.')),
-        );
-        return null;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Permissão de localização negada.')),
+          );
+        }
       }
     }
     if (permissao == LocationPermission.deniedForever) {
-      if (!mounted) return null;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Permissão negada permanentemente. Altere nas configurações.',
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Permissão negada permanentemente. Altere nas configurações.',
+            ),
           ),
-        ),
-      );
-      return null;
+        );
+      }
     }
     Position position = await Geolocator.getCurrentPosition(
       locationSettings: LocationSettings(),
     );
-    return position;
+    setState(() {
+      _pontoInicial = LatLng(position.latitude, position.longitude);
+    });
+    atualizarLinha();
+  }
+
+  void atualizarLinha() {
+    if (_pontoClicado == null) {
+      _linhas = {};
+      return;
+    }
+
+    final pontos = [_pontoInicial, _pontoClicado!];
+    _linhas = {
+      Polyline(
+        polylineId: PolylineId('linha_unica'),
+        points: pontos,
+        color: Colors.blue,
+        width: 5,
+        jointType: JointType.round,
+      ),
+    };
   }
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'home.dart';
+import 'linha.dart';
 
 class Splash extends StatefulWidget {
   const Splash({super.key});
@@ -32,7 +32,7 @@ class _SplashState extends State<Splash> with TickerProviderStateMixin {
   void irParaHome() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => Home()),
+      MaterialPageRoute(builder: (context) => Linha()),
     );
   }
 
