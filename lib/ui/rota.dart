@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import 'splash.dart';
@@ -15,7 +14,7 @@ class Rota extends StatefulWidget {
 }
 
 class _RotaState extends State<Rota> {
-  LatLng _pontoInicial = LatLng(-22.7130000, -46.8180000); //SESI Amparo
+  final LatLng _pontoInicial = LatLng(-22.7130000, -46.8180000); //SESI Amparo
   LatLng? _pontoClicado;
   Set<Polyline> _linhas = {};
   String mensagem = 'Destino: Clique em um ponto no mapa';
@@ -125,43 +124,6 @@ class _RotaState extends State<Rota> {
     );
   }
 
-  Future<void> _obterCoordenadasGPS() async {
-    bool servicoAtivo;
-    LocationPermission permissao;
-    servicoAtivo = await Geolocator.isLocationServiceEnabled();
-    if (!servicoAtivo) {
-      return Future.error('O serviço de localização está desativado.');
-    }
-    permissao = await Geolocator.checkPermission();
-    if (permissao == LocationPermission.denied) {
-      permissao = await Geolocator.requestPermission();
-      if (permissao == LocationPermission.denied) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Permissão de localização negada.')),
-          );
-        }
-      }
-    }
-    if (permissao == LocationPermission.deniedForever) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Permissão negada permanentemente. Altere nas configurações.',
-            ),
-          ),
-        );
-      }
-    }
-    Position position = await Geolocator.getCurrentPosition(
-      locationSettings: LocationSettings(),
-    );
-    setState(() {
-      _pontoInicial = LatLng(position.latitude, position.longitude);
-    });
-  }
-
   void _atualizarLinhas(List<LatLng> rota) {
     if (_pontoClicado == null) {
       _linhas = {};
@@ -180,28 +142,37 @@ class _RotaState extends State<Rota> {
   }
 
   Future<void> _obterRota() async {
-    PolylinePoints pontos = PolylinePoints(apiKey: '');
-    PolylineResult result = await pontos.getRouteBetweenCoordinates(
-      request: PolylineRequest(
+    final pontos = PolylinePoints(apiKey: '');
+
+    final result = await pontos.getRouteBetweenCoordinatesV2(
+      request: RoutesApiRequest(
         origin: PointLatLng(_pontoInicial.latitude, _pontoInicial.longitude),
         destination: PointLatLng(
           _pontoClicado!.latitude,
           _pontoClicado!.longitude,
         ),
-        mode: TravelMode.driving,
+        travelMode: TravelMode.driving,
       ),
     );
-    if (result.points.isNotEmpty) {
-      List<LatLng> coordenadas = [];
-      for (var p in result.points) {
-        coordenadas.add(LatLng(p.latitude, p.longitude));
+
+    if (result.routes.isNotEmpty &&
+        result.routes.first.polylinePoints != null) {
+      final coordenadas = result.routes.first.polylinePoints!
+          .map((p) => LatLng(p.latitude, p.longitude))
+          .toList();
+
+      if (mounted) {
+        setState(() {
+          _atualizarLinhas(coordenadas);
+        });
       }
-      _atualizarLinhas(coordenadas);
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erro ao buscar rota na API: ${result.errorMessage}'),
+            content: Text(
+              'Erro ao buscar rota na API: ${result.errorMessage ?? 'Sem rota disponível'}',
+            ),
           ),
         );
       }
