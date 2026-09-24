@@ -13,8 +13,8 @@ App de estdos com Google Maps e Polyline, com o objetivo de traçar trajetos no 
 ## Como testar
 - Clone o repositório
 - Abra com vscode
-- Insira uma chave de API do Google Maps no arquivo `android/app/src/main/AndroidManiest.xml`
-- Também em `lib/ui/rota.dart`
+- Insira uma **chave de API do Google Maps** no arquivo `android/app/src/main/AndroidManiest.xml`
+  - Também insira em `lib/ui/rota.dart` no local indicado
 - Instale as dependências e execute em um emulador
 ```bash
 flutter pub get
