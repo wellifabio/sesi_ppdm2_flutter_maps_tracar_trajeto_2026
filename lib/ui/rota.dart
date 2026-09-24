@@ -102,7 +102,7 @@ class _RotaState extends State<Rota> {
   }
 
   Future<void> _obterRota() async {
-    final pontos = PolylinePoints.legacy('API_KEYd');
+    final pontos = PolylinePoints.legacy('API_KEY');
 
     // ignore: deprecated_member_use
     final result = await pontos.getRouteBetweenCoordinates(
