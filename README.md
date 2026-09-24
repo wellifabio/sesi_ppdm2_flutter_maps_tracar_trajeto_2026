@@ -1,5 +1,5 @@
 # flutter_maps_tracar_trajeto
-App de estdos com Google Maps e Polyline, com o objetivo de traçar trajetos no mapa
+App de estudos com Google Maps e Polyline, com o objetivo de traçar trajetos no mapa
 - Menu como widget
 - style - tema claro e escuro pelo sistema
 - Splash com animação
