@@ -1,6 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:http/http.dart' as http;
 
 import 'widgets/menu.dart';
 
@@ -14,7 +16,8 @@ class Rota extends StatefulWidget {
 class _RotaState extends State<Rota> {
   final LatLng _pontoInicial = LatLng(-22.7130000, -46.8180000); //SESI Amparo
   LatLng? _pontoClicado;
-  Set<Polyline> _linhas = {};
+  GoogleMapController? mapController;
+  final Map<PolylineId, Polyline> _polylines = {};
   String mensagem = 'Destino: Clique em um ponto no mapa';
 
   @override
@@ -40,10 +43,13 @@ class _RotaState extends State<Rota> {
                   target: _pontoInicial,
                   zoom: 15.0,
                 ),
+                onMapCreated: (GoogleMapController controller) {
+                  mapController = controller;
+                },
                 onTap: (LatLng latLng) {
                   setState(() {
                     _pontoClicado = latLng;
-                    _obterRota();
+                    buscarRota(_pontoInicial, latLng);
                     mensagem =
                         'Destino: @${latLng.latitude.toStringAsFixed(7)}, ${latLng.longitude.toStringAsFixed(7)}';
                   });
@@ -76,7 +82,7 @@ class _RotaState extends State<Rota> {
                           infoWindow: InfoWindow(title: 'Destino'),
                         ),
                       },
-                polylines: _linhas,
+                polylines: _polylines.values.toSet(),
               ),
             ),
           ],
@@ -85,58 +91,71 @@ class _RotaState extends State<Rota> {
     );
   }
 
-  void _atualizarLinhas(List<LatLng> rota) {
-    if (_pontoClicado == null) {
-      _linhas = {};
-      return;
-    }
-    _linhas = {
-      Polyline(
-        polylineId: PolylineId('rota_destino'),
-        points: rota,
-        color: Colors.blue,
-        width: 5,
-        jointType: JointType.round,
-      ),
-    };
-  }
-
-  Future<void> _obterRota() async {
-    final pontos = PolylinePoints.legacy('API_KEY');
-
-    // ignore: deprecated_member_use
-    final result = await pontos.getRouteBetweenCoordinates(
-      request: PolylineRequest(
-        origin: PointLatLng(_pontoInicial.latitude, _pontoInicial.longitude),
-        destination: PointLatLng(
-          _pontoClicado!.latitude,
-          _pontoClicado!.longitude,
-        ),
-        mode: TravelMode.driving,
-      ),
+  Future<void> buscarRota(LatLng origem, LatLng destino) async {
+    final url = Uri.parse(
+      'https://router.project-osrm.org/route/v1/driving/'
+      '${origem.longitude},${origem.latitude};'
+      '${destino.longitude},${destino.latitude}'
+      '?overview=full&geometries=geojson',
     );
 
-    if (result.points.isNotEmpty) {
-      final coordenadas = result.points
-          .map((p) => LatLng(p.latitude, p.longitude))
-          .toList();
+    try {
+      final response = await http.get(url);
 
-      if (mounted) {
-        setState(() {
-          _atualizarLinhas(coordenadas);
-        });
-      }
-    } else {
-      if (mounted) {
-        debugPrint(result.errorMessage);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Erro ao buscar rota na API: ${result.errorMessage ?? 'Sem rota disponível'}',
-            ),
-          ),
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        if (data['routes'] == null || (data['routes'] as List).isEmpty) {
+          debugPrint('OSRM: nenhuma rota encontrada');
+          return;
+        }
+
+        final coords = data['routes'][0]['geometry']['coordinates'] as List;
+        final pontos = coords
+            .map<LatLng>((c) => LatLng(c[1].toDouble(), c[0].toDouble()))
+            .toList();
+
+        final polyline = Polyline(
+          polylineId: const PolylineId('trajeto_osrm'),
+          color: Colors.blue,
+          width: 5,
+          points: pontos,
         );
+
+        setState(() {
+          _polylines.clear();
+          _polylines[polyline.polylineId] = polyline;
+        });
+
+        final bounds = _boundsFromPoints(pontos);
+        if (bounds != null) {
+          mapController?.animateCamera(
+            CameraUpdate.newLatLngBounds(bounds, 48),
+          );
+        }
+      } else {
+        debugPrint('OSRM erro: ${response.statusCode} - ${response.body}');
       }
+    } catch (e) {
+      debugPrint('Erro ao buscar rota OSRM: $e');
     }
+  }
+
+  LatLngBounds? _boundsFromPoints(List<LatLng> points) {
+    if (points.isEmpty) return null;
+
+    final latitudes = points.map((p) => p.latitude).toList();
+    final longitudes = points.map((p) => p.longitude).toList();
+
+    return LatLngBounds(
+      southwest: LatLng(
+        latitudes.reduce((a, b) => a < b ? a : b),
+        longitudes.reduce((a, b) => a < b ? a : b),
+      ),
+      northeast: LatLng(
+        latitudes.reduce((a, b) => a > b ? a : b),
+        longitudes.reduce((a, b) => a > b ? a : b),
+      ),
+    );
   }
 }
